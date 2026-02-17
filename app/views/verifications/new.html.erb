@@ -1,0 +1,341 @@
+<style>
+  .container {
+    max-width: 700px;
+    margin: 40px auto;
+    padding: 30px;
+    background-color: #ffffff;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    border-radius: 12px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #1a202c;
+    margin-bottom: 24px;
+    text-align: center;
+  }
+  h2 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #2d3748;
+    margin-top: 0;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #e2e8f0;
+  }
+  .form-group {
+    margin-bottom: 20px;
+  }
+  label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #4a5568;
+    margin-bottom: 6px;
+  }
+  input[type="text"],
+  input[type="email"],
+  input[type="tel"] {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #cbd5e0;
+    border-radius: 6px;
+    font-size: 1rem;
+    transition: border-color 0.2s;
+    box-sizing: border-box;
+  }
+  input[type="text"]:focus,
+  input[type="email"]:focus,
+  input[type="tel"]:focus {
+    outline: none;
+    border-color: #4c51bf;
+    box-shadow: 0 0 0 3px rgba(76, 81, 191, 0.1);
+  }
+  input[type="file"] {
+    display: block;
+    width: 100%;
+    font-size: 0.875rem;
+    color: #4a5568;
+  }
+  input[type="file"]::file-selector-button {
+    margin-right: 16px;
+    padding: 8px 16px;
+    border-radius: 9999px;
+    border: none;
+    font-size: 0.875rem;
+    font-weight: 600;
+    background-color: #ebf4ff;
+    color: #4c51bf;
+    cursor: pointer;
+    transition: background-color 0.2s;
+  }
+  input[type="file"]::file-selector-button:hover {
+    background-color: #c3dafe;
+  }
+  .section {
+    margin-top: 32px;
+    padding-top: 24px;
+    border-top: 1px solid #edf2f7;
+  }
+  .submit-btn {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    padding: 12px 24px;
+    border: none;
+    border-radius: 6px;
+    background-color: #4c51bf;
+    color: white;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    margin-top: 30px;
+  }
+  .submit-btn:hover {
+    background-color: #434190;
+  }
+  .hint {
+    font-size: 0.75rem;
+    color: #718096;
+    margin-top: 4px;
+  }
+</style>
+
+<div class="container">
+  <h1>Nubarium Verification POC</h1>
+  
+  <%# SDK Scripts %>
+  <script type="text/javascript" src="https://cdn.nubarium.com/nubSdk/nubSdk@latest/nubSdk-third.min.js"></script>
+  <script type="text/javascript" src="https://cdn.nubarium.com/nubSdk/nubSdk@latest/nubSdk-biometrics.min.js"></script>
+
+<%= form_with url: verifications_path, local: true, data: { turbo: false }, id: "verification-form" do |form| %>
+    
+    <!-- Step 1: User Info -->
+    <div id="step-1">
+        <h2>Step 1: Your Information</h2>
+        <div class="form-group">
+            <%= form.label :email %>
+            <%= form.email_field :email, placeholder: "you@example.com", required: true %>
+        </div>
+
+        <div class="form-group">
+            <%= form.label :phone %>
+            <%= form.telephone_field :phone, placeholder: "+52...", required: true %>
+        </div>
+        
+        <button type="button" class="submit-btn" id="start-btn">Start Verification</button>
+    </div>
+    
+    <!-- Hidden Fields for Captured Images (Base64) -->
+    <%= form.hidden_field :face_image, id: "face_image_field" %>
+    <%= form.hidden_field :front_image, id: "front_image_field" %>
+    <%= form.hidden_field :back_image, id: "back_image_field" %>
+
+    <!-- Step 2 & 3: Biometrics -->
+    <div class="section" id="biometrics-section" style="display: none;">
+      <h2 id="step-title">Biometrics Capture</h2>
+      <p class="hint" id="step-instruction">Please allow camera access.</p>
+      
+      <!-- SDK Container -->
+      <div id="face_component" style="width: 100%; min-height: 400px; display: none; background: #f7fafc; border: 1px dashed #cbd5e0;"></div>
+      <div id="id_component" style="width: 100%; min-height: 400px; display: none; background: #f7fafc; border: 1px dashed #cbd5e0;"></div>
+      
+      <div id="sdk-status" class="status" style="display: none; text-align: center; margin-top: 10px;">Initializing...</div>
+    </div>
+    
+    <!-- Submit Button (Hidden, triggered automatically) -->
+    <%= form.submit "Submit", id: "final-submit-btn", style: "display: none;" %>
+
+  <% end %>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+    const startBtn = document.getElementById("start-btn");
+    const form = document.getElementById("verification-form");
+    const step1 = document.getElementById("step-1");
+    const biometricsSection = document.getElementById("biometrics-section");
+    const stepTitle = document.getElementById("step-title");
+    const stepInstruction = document.getElementById("step-instruction");
+    const statusDiv = document.getElementById("sdk-status");
+    const finalSubmitBtn = document.getElementById("final-submit-btn");
+    
+    // Hidden Fields
+    const faceField = document.getElementById("face_image_field");
+    const frontField = document.getElementById("front_image_field");
+    const backField = document.getElementById("back_image_field");
+
+    let currentStep = 0; // 0: Start, 1: Face, 2: ID
+
+    startBtn.addEventListener("click", async () => {
+        // Validate inputs
+        const email = document.getElementById("email");
+        const phone = document.getElementById("phone");
+        
+        if (!email.checkValidity() || !phone.checkValidity() || !email.value || !phone.value) {
+            email.reportValidity();
+            phone.reportValidity();
+            return;
+        }
+
+        // Hide Step 1, Show Step 2
+        step1.style.display = "none";
+        biometricsSection.style.display = "block";
+        statusDiv.style.display = "block";
+        statusDiv.innerText = "Initializing SDK...";
+        
+        startBiometricsFlow();
+    });
+
+    async function startBiometricsFlow() {
+        try {
+            // 1. Fetch Token
+            const response = await fetch("/verifications/token");
+            const data = await response.json();
+            
+            if (!data.token) {
+                throw new Error("Failed to get token from backend");
+            }
+            
+            const token = data.token;
+
+            // Start Face Capture
+            startFaceCapture(token);
+
+        } catch (e) {
+            console.error(e);
+            showError("Error: " + e.message);
+        }
+    }
+
+    function showError(msg) {
+        statusDiv.innerText = msg;
+        statusDiv.classList.add("error");
+        statusDiv.style.display = "block";
+    }
+
+    // --- Face Capture ---
+    function startFaceCapture(token) {
+        currentStep = 1;
+        stepTitle.innerText = "Step 2: Face Capture";
+        stepInstruction.innerText = "Position your face within the oval.";
+        
+        const container = document.getElementById("face_component");
+        container.style.display = "block"; 
+        statusDiv.innerText = "Starting Face Camera...";
+
+        let faceCapture = new FaceCapture();
+        
+        let config = {
+            rootElement: 'face_component',
+            maxValidations: 3,
+            antispoofing: { enabled: true, level: 3 }
+        };
+
+        try {
+            faceCapture.init(config);
+            faceCapture.setToken(token);
+
+            faceCapture.load(() => {
+                console.log("Face SDK Loaded");
+                faceCapture.start();
+                statusDiv.style.display = "none";
+            });
+
+            faceCapture.onSuccess((data) => {
+                console.log("Face Success:", data);
+                if (data.face) faceField.value = data.face;
+                else if (data.image) faceField.value = data.image;
+                
+                statusDiv.innerText = "Face Captured!";
+                statusDiv.style.display = "block";
+                statusDiv.classList.add("success");
+                
+                setTimeout(() => {
+                    container.style.display = "none"; 
+                    startIdCapture(token);
+                }, 1000);
+            });
+
+            faceCapture.onFail((fail) => {
+                console.error("Face Fail:", fail);
+                showError("Face Capture Failed: " + (fail.reason || JSON.stringify(fail)));
+            });
+            
+             faceCapture.onError((error) => {
+                console.error("Face Error:", error);
+                showError("Face SDK Error: " + (error.msg || JSON.stringify(error)));
+            });
+
+        } catch (e) {
+            showError("Face Init Error: " + e.message);
+        }
+    }
+
+    // --- ID Capture ---
+    function startIdCapture(token) {
+        currentStep = 2;
+        stepTitle.innerText = "Step 3: ID Capture";
+        stepInstruction.innerText = "Capture your ID. The system will detect the document type.";
+        
+        const container = document.getElementById("id_component");
+        container.style.display = "block";
+        statusDiv.innerText = "Starting ID Camera...";
+        statusDiv.classList.remove("success");
+
+        let idCapture = new IdCapture();
+        
+        // General configuration (no specific captureMode for back:false needed if sdk auto-detects)
+        let config = {
+            rootElement: 'id_component',
+            timeouts: { front: 60000, back: 60000 },
+            guide: {
+                front: { enabled: true },
+                back: { enabled: true } 
+            },
+            autorotate: true
+        };
+
+        try {
+            idCapture.init(config);
+            idCapture.setToken(token);
+
+            idCapture.load(() => {
+                console.log("ID SDK Loaded");
+                idCapture.start();
+                statusDiv.style.display = "none";
+            });
+
+            idCapture.onSuccess((data) => {
+                console.log("ID Success:", data);
+                
+                if (data.front) frontField.value = data.front;
+                if (data.back) backField.value = data.back;
+
+                statusDiv.innerText = "ID Captured! Verifying...";
+                statusDiv.style.display = "block";
+                statusDiv.classList.add("success");
+                
+                setTimeout(() => {
+                    finalSubmitBtn.click();
+                }, 500);
+            });
+
+            idCapture.onFail((fail) => {
+                 console.error("ID Fail:", fail);
+                 showError("ID Capture Failed: " + (fail.reason || JSON.stringify(fail)));
+            });
+            
+            idCapture.onError((error) => {
+                console.error("ID Error:", error);
+                showError("ID SDK Error: " + (error.msg || JSON.stringify(error)));
+            });
+
+        } catch (e) {
+            showError("ID Init Error: " + e.message);
+        }
+    }
+});
+</script>

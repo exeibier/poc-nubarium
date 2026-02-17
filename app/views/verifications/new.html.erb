@@ -110,7 +110,7 @@
   <script type="text/javascript" src="https://cdn.nubarium.com/nubSdk/nubSdk@latest/nubSdk-third.min.js"></script>
   <script type="text/javascript" src="https://cdn.nubarium.com/nubSdk/nubSdk@latest/nubSdk-biometrics.min.js"></script>
 
-<%= form_with url: verifications_path, local: true, data: { turbo: false }, id: "verification-form" do |form| %>
+<%= form_with url: verifications_path, local: true, multipart: true, data: { turbo: false }, id: "verification-form" do |form| %>
     
     <!-- Step 1: User Info -->
     <div id="step-1">
@@ -244,10 +244,19 @@ document.addEventListener("DOMContentLoaded", () => {
                 statusDiv.style.display = "none";
             });
 
-            faceCapture.onSuccess((data) => {
+            faceCapture.onSuccess(async (data) => {
                 console.log("Face Success:", data);
-                if (data.face) faceField.value = data.face;
-                else if (data.image) faceField.value = data.image;
+                
+                let rawFace = data.face || data.image;
+
+                try {
+                    // Resize to ensure it's not too huge (e.g. max 800px)
+                    let resizedFace = await resizeBase64(rawFace, 800, 0.85);
+                    faceField.value = getCleanBase64(resizedFace);
+                } catch (e) {
+                    console.warn("Resize face failed, using original", e);
+                    faceField.value = rawFace;
+                }
                 
                 statusDiv.innerText = "Face Captured!";
                 statusDiv.style.display = "block";
@@ -308,11 +317,23 @@ document.addEventListener("DOMContentLoaded", () => {
                 statusDiv.style.display = "none";
             });
 
-            idCapture.onSuccess((data) => {
+            idCapture.onSuccess(async (data) => {
                 console.log("ID Success:", data);
                 
-                if (data.front) frontField.value = data.front;
-                if (data.back) backField.value = data.back;
+                try {
+                    if (data.front) {
+                        let resizedFront = await resizeBase64(data.front, 1280, 0.85);
+                        frontField.value = getCleanBase64(resizedFront);
+                    }
+                    if (data.back) {
+                        let resizedBack = await resizeBase64(data.back, 1280, 0.85);
+                        backField.value = getCleanBase64(resizedBack);
+                    }
+                } catch (e) {
+                    console.warn("Resize ID failed, using original", e);
+                    if (data.front) frontField.value = data.front;
+                    if (data.back) backField.value = data.back;
+                }
 
                 statusDiv.innerText = "ID Captured! Verifying...";
                 statusDiv.style.display = "block";
@@ -336,6 +357,52 @@ document.addEventListener("DOMContentLoaded", () => {
         } catch (e) {
             showError("ID Init Error: " + e.message);
         }
+    }
+
+    // --- Helpers ---
+
+    function getCleanBase64(dataUrl) {
+        // Remove "data:image/jpeg;base64," prefix if present
+        return dataUrl.split(',')[1] || dataUrl;
+    }
+
+    function resizeBase64(base64, maxWidth, quality) {
+        return new Promise((resolve, reject) => {
+            // Ensure prefix for Image.src
+            let src = base64;
+            if (!src.startsWith("data:image")) {
+                src = "data:image/jpeg;base64," + base64;
+            }
+
+            const img = new Image();
+            img.src = src;
+            img.crossOrigin = "Anonymous"; // Just in case, though usually local data
+
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
+
+                // Scale down if needed
+                if (width > maxWidth || height > maxWidth) {
+                    const ratio = Math.min(maxWidth / width, maxWidth / height);
+                    width = Math.round(width * ratio);
+                    height = Math.round(height * ratio);
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+                
+                // Return Data URL (jpeg)
+                resolve(canvas.toDataURL("image/jpeg", quality));
+            };
+            
+            img.onerror = (err) => {
+                reject(err);
+            };
+        });
     }
 });
 </script>

@@ -1,18 +1,19 @@
 require "test_helper"
 
 class VerificationsControllerTest < ActionDispatch::IntegrationTest
+  setup do
+    ENV["POC_USER"] = "testuser"
+    ENV["POC_PASS"] = "testpass"
+    @auth_headers = { "Authorization" => ActionController::HttpAuthentication::Basic.encode_credentials("testuser", "testpass") }
+  end
+
   test "should get new" do
-    get verifications_new_url
+    get new_verification_url, headers: @auth_headers
     assert_response :success
   end
 
-  test "should get create" do
-    get verifications_create_url
-    assert_response :success
-  end
-
-  test "should get show" do
-    get verifications_show_url
+  test "should create verification" do
+    post verifications_url, headers: @auth_headers
     assert_response :success
   end
 end

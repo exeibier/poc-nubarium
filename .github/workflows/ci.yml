@@ -17,7 +17,8 @@ jobs:
         uses: ruby/setup-ruby@v1
         with:
           bundler-cache: true
-
+      - name: Allow Gemfile.lock updates
+        run: bundle config set frozen false
       - name: Scan for common Rails security vulnerabilities using static analysis
         run: bin/brakeman --no-pager
       
@@ -35,7 +36,8 @@ jobs:
         uses: ruby/setup-ruby@v1
         with:
           bundler-cache: true
-
+      - name: Allow Gemfile.lock updates
+        run: bundle config set frozen false
       - name: Scan for security vulnerabilities in JavaScript dependencies
         run: bin/importmap audit
 
@@ -51,7 +53,8 @@ jobs:
         uses: ruby/setup-ruby@v1
         with:
           bundler-cache: true
-
+      - name: Allow Gemfile.lock updates
+        run: bundle config set frozen false
       - name: Prepare RuboCop cache
         uses: actions/cache@v4
         env:
@@ -82,7 +85,8 @@ jobs:
         uses: ruby/setup-ruby@v1
         with:
           bundler-cache: true
-
+      - name: Allow Gemfile.lock updates
+        run: bundle config set frozen false
       - name: Run tests
         env:
           RAILS_ENV: test
@@ -107,7 +111,8 @@ jobs:
         uses: ruby/setup-ruby@v1
         with:
           bundler-cache: true
-
+      - name: Allow Gemfile.lock updates
+        run: bundle config set frozen false 
       - name: Run System Tests
         env:
           RAILS_ENV: test

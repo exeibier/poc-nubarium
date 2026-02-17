@@ -18,9 +18,6 @@ jobs:
         with:
           bundler-cache: true
 
-      - name: Set up database schema
-        run: bin/rails db:migrate
-
       - name: Scan for common Rails security vulnerabilities using static analysis
         run: bin/brakeman --no-pager
       
@@ -38,9 +35,6 @@ jobs:
         uses: ruby/setup-ruby@v1
         with:
           bundler-cache: true
-
-      - name: Set up database schema
-        run: bin/rails db:migrate
 
       - name: Scan for security vulnerabilities in JavaScript dependencies
         run: bin/importmap audit

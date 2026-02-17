@@ -16,9 +16,14 @@ jobs:
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
-          bundler-cache: true
+          bundler-cache: false  # Disable automatic cache
+      
       - name: Allow Gemfile.lock updates
         run: bundle config set frozen false
+      
+      - name: Install dependencies
+        run: bundle install
+        
       - name: Scan for common Rails security vulnerabilities using static analysis
         run: bin/brakeman --no-pager
       
@@ -35,9 +40,14 @@ jobs:
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
-          bundler-cache: true
+          bundler-cache: false  # Disable automatic cache
+      
       - name: Allow Gemfile.lock updates
         run: bundle config set frozen false
+      
+      - name: Install dependencies
+        run: bundle install
+        
       - name: Scan for security vulnerabilities in JavaScript dependencies
         run: bin/importmap audit
 
@@ -52,9 +62,14 @@ jobs:
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
-          bundler-cache: true
+          bundler-cache: false  # Disable automatic cache
+      
       - name: Allow Gemfile.lock updates
         run: bundle config set frozen false
+      
+      - name: Install dependencies
+        run: bundle install
+        
       - name: Prepare RuboCop cache
         uses: actions/cache@v4
         env:
@@ -84,9 +99,14 @@ jobs:
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
-          bundler-cache: true
+          bundler-cache: false  # Disable automatic cache
+      
       - name: Allow Gemfile.lock updates
         run: bundle config set frozen false
+      
+      - name: Install dependencies
+        run: bundle install
+        
       - name: Run tests
         env:
           RAILS_ENV: test
@@ -110,9 +130,14 @@ jobs:
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
-          bundler-cache: true
+          bundler-cache: false  # Disable automatic cache
+      
       - name: Allow Gemfile.lock updates
-        run: bundle config set frozen false 
+        run: bundle config set frozen false
+      
+      - name: Install dependencies
+        run: bundle install
+        
       - name: Run System Tests
         env:
           RAILS_ENV: test

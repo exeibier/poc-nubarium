@@ -181,17 +181,16 @@ class NubariumService
         f.adapter Faraday.default_adapter
     end
 
-    Rails.logger.info("Nubarium: Checking Blocklist for #{full_name} (SKIPPED)...")
-    # response = conn.post("/blacklists/v1/consulta") do |req|
-    #     req.body = {
-    #         nombreCompleto: full_name,
-    #         similitud: 100
-    #     }
-    # end
+    Rails.logger.info("Nubarium: Checking Blocklist for #{full_name}...")
+    response = conn.post("/blacklists/v1/consulta") do |req|
+        req.body = {
+            nombreCompleto: full_name,
+            similitud: 100
+        }
+    end
 
-    # log_response("Blocklist", response)
-    # ensure_hash_response(response)
-    { "estatus" => "SKIPPED", "mensaje" => "Step disabled by user request" }
+    log_response("Blocklist", response)
+    ensure_hash_response(response)
   end
 
   # Helper to encode file to base64

@@ -264,17 +264,20 @@ document.addEventListener("DOMContentLoaded", () => {
                 
                 setTimeout(() => {
                     container.style.display = "none"; 
+                    faceCapture.clear(); // Free the camera!
                     startIdCapture(token);
                 }, 1000);
             });
 
             faceCapture.onFail((fail) => {
                 console.error("Face Fail:", fail);
+                faceCapture.clear(); // Free the camera!
                 showError("Face Capture Failed: " + (fail.reason || JSON.stringify(fail)));
             });
             
              faceCapture.onError((error) => {
                 console.error("Face Error:", error);
+                faceCapture.clear(); // Free the camera!
                 showError("Face SDK Error: " + (error.msg || JSON.stringify(error)));
             });
 
@@ -340,17 +343,32 @@ document.addEventListener("DOMContentLoaded", () => {
                 statusDiv.classList.add("success");
                 
                 setTimeout(() => {
+                    idCapture.clear(); // Free the camera!
                     finalSubmitBtn.click();
                 }, 500);
             });
 
             idCapture.onFail((fail) => {
                  console.error("ID Fail:", fail);
-                 showError("ID Capture Failed: " + (fail.reason || JSON.stringify(fail)));
+                 if (fail.reason === "ocr_not_readable" || fail.reason === "low_accurate_ocr") {
+                     statusDiv.innerText = "ID not readable. Please try again...";
+                     statusDiv.classList.remove("success");
+                     statusDiv.classList.add("error");
+                     statusDiv.style.display = "block";
+                     
+                     setTimeout(() => {
+                         statusDiv.style.display = "none";
+                         idCapture.retry();
+                     }, 2500);
+                 } else {
+                     idCapture.clear(); // Free the camera!
+                     showError("ID Capture Failed: " + (fail.reason || JSON.stringify(fail)));
+                 }
             });
             
             idCapture.onError((error) => {
                 console.error("ID Error:", error);
+                idCapture.clear(); // Free the camera!
                 showError("ID SDK Error: " + (error.msg || JSON.stringify(error)));
             });
 
